@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button, Card, Form, Input, InputNumber, Modal, Select, Space, Table, Tag, DatePicker, App as AntdApp } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import type { TableRowSelection } from 'antd/es/table/interface';
 import dayjs, { Dayjs } from 'dayjs';
 import { Link } from 'react-router-dom';
 import { apiGet, apiPost } from '../../api/client';
@@ -29,7 +30,11 @@ export default function TaskListPage() {
   const [page, setPage] = useState(0);
   const [size, setSize] = useState(10);
   const [filterStatus, setFilterStatus] = useState<string | undefined>();
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
+  const [batchProcessing, setBatchProcessing] = useState(false);
+  const [batchForm] = Form.useForm<{ action: string; comment?: string }>();
   const [form] = Form.useForm<{
     type: string; title: string; description?: string;
     assignedToId?: number; deadline?: Dayjs;
@@ -72,6 +77,39 @@ export default function TaskListPage() {
     }
   };
 
+  const submitBatch = async () => {
+    try {
+      const v = await batchForm.validateFields();
+      setBatchProcessing(true);
+      let ok = 0;
+      let fail = 0;
+      for (const id of selectedIds) {
+        try {
+          await apiPost(`/api/workflow/tasks/${id}/approvals`, { action: v.action, comment: v.comment || '' });
+          ok++;
+        } catch {
+          fail++;
+        }
+      }
+      message.success(`Processed ${ok} task(s)${fail > 0 ? `, ${fail} failed` : ''}`);
+      setBatchModalOpen(false);
+      batchForm.resetFields();
+      setSelectedIds([]);
+      load();
+    } catch (e) {
+      if ((e as { errorFields?: unknown }).errorFields) return;
+      message.error((e as Error).message);
+    } finally {
+      setBatchProcessing(false);
+    }
+  };
+
+  const rowSelection: TableRowSelection<WorkflowTaskResponse> = {
+    selectedRowKeys: selectedIds,
+    onChange: (keys) => setSelectedIds(keys as number[]),
+    getCheckboxProps: (r) => ({ disabled: r.status !== 'PENDING' }),
+  };
+
   const columns: ColumnsType<WorkflowTaskResponse> = [
     { title: 'Task #', dataIndex: 'taskNumber' },
     { title: 'Title', render: (_, t) => <Link to={`/dispatcher/tasks/${t.id}`}>{t.title}</Link> },
@@ -104,6 +142,11 @@ export default function TaskListPage() {
               options={STATUSES.map((s) => ({ value: s, label: s }))}
               onChange={(v) => { setFilterStatus(v); setPage(0); }}
             />
+            {selectedIds.length > 0 && (
+              <Button onClick={() => setBatchModalOpen(true)}>
+                Batch action ({selectedIds.length})
+              </Button>
+            )}
             <Button type="primary" onClick={() => setModalOpen(true)}>
               New task
             </Button>
@@ -112,6 +155,7 @@ export default function TaskListPage() {
       >
         <Table
           rowKey="id"
+          rowSelection={rowSelection}
           loading={loading}
           columns={columns}
           dataSource={data}
@@ -123,6 +167,29 @@ export default function TaskListPage() {
           }}
         />
       </Card>
+
+      <Modal
+        title={`Batch action — ${selectedIds.length} task(s)`}
+        open={batchModalOpen}
+        onOk={submitBatch}
+        okButtonProps={{ loading: batchProcessing }}
+        onCancel={() => { setBatchModalOpen(false); batchForm.resetFields(); }}
+        okText="Apply to all"
+        destroyOnClose
+      >
+        <Form form={batchForm} layout="vertical">
+          <Form.Item name="action" label="Action" rules={[{ required: true, message: 'Required' }]}>
+            <Select options={[
+              { value: 'APPROVE', label: 'Approve' },
+              { value: 'REJECT', label: 'Reject' },
+              { value: 'RETURN', label: 'Return for resubmission' },
+            ]} />
+          </Form.Item>
+          <Form.Item name="comment" label="Comment">
+            <Input.TextArea rows={3} placeholder="Optional" />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       <Modal
         title="Create workflow task"

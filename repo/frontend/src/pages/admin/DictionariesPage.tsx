@@ -26,7 +26,7 @@ export default function DictionariesPage() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [filterField]);
 
   const save = async () => {
     try {
@@ -42,9 +42,13 @@ export default function DictionariesPage() {
   };
 
   const remove = async (id: number) => {
-    await apiDelete(`/api/admin/dictionaries/${id}`);
-    message.success('Deleted');
-    load();
+    try {
+      await apiDelete(`/api/admin/dictionaries/${id}`);
+      message.success('Deleted');
+      load();
+    } catch (e) {
+      message.error((e as Error).message);
+    }
   };
 
   const columns: ColumnsType<FieldDict> = [
@@ -72,7 +76,7 @@ export default function DictionariesPage() {
               placeholder="Filter by field name"
               allowClear
               style={{ width: 240 }}
-              onSearch={(v) => { setFilterField(v); setTimeout(load, 0); }}
+              onSearch={(v) => setFilterField(v)}
             />
             <Button type="primary" onClick={() => { form.resetFields(); setModalOpen(true); }}>
               Add entry

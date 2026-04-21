@@ -38,8 +38,12 @@ export default function MessagesPage() {
   }, []);
 
   const markOne = async (id: number) => {
-    await apiPatch(`/api/notifications/${id}/read`);
-    load();
+    try {
+      await apiPatch(`/api/notifications/${id}/read`);
+      load();
+    } catch (e) {
+      message.error((e as Error).message);
+    }
   };
 
   const markAll = async () => {
