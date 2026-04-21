@@ -1,0 +1,9 @@
+{
+  "task_id": "TASK-20260318-393C91",
+  "project_type": "full_stack",
+  "frontend_tech": "React",
+  "backend_tech": "Java (Spring Boot)",
+  "database": "PostgreSQL",
+  "task_type": "Prompt2Repo",
+  "development_tool": "Claude Code"
+}

@@ -1,0 +1,13 @@
+Develop a "City Bus Operation and Service Coordination Platform" targeting three user roles: passengers, dispatchers, and operation administrators.
+
+Passengers access an English interface built with React, where they can search for bus routes and stops by route number, stop name, or keywords. The search supports autocomplete suggestions and pinyin/initial letter matching, with results sorted by "frequency priority + stop popularity" and automatically deduplicated. The search results page allows users to set notification preferences for arrival reminders, including toggle switches and "do not disturb" periods (e.g., no notifications from 22:00 to 07:00). Notifications for events such as successful reservations, upcoming reminders (default 10 minutes in advance), and missed check-ins (5 minutes after start time) are centralized in a message center for unified viewing.
+
+Dispatchers use a task dashboard to handle tasks such as "route data change approvals, reminder rule configurations, and abnormal data reviews." The workflow engine supports conditional branching, joint/parallel approvals, task returns for resubmission, and timeout alerts (tasks unprocessed for 24 hours trigger escalation warnings). It also provides visual progress tracking and batch processing capabilities.
+
+Administrators maintain notification templates, sorting rule weights, and field standard dictionaries.
+
+On the system side, Spring Boot is deployed in an offline local area network, with RESTful APIs decoupled from the frontend. All data is stored in PostgreSQL with a local backup strategy. Bus data integration supports structured parsing of HTML/JSON templates, with field mapping and version management to track changes in stop structures. Fields such as stop names, addresses, residential area names, apartment types, areas, and prices undergo standardized cleaning and missing value handling (e.g., areas unified as ㎡, prices unified as yuan/month, missing fields marked as NULL with source logging). Cleaning rules are configurable, with audit logs retained.
+
+User authentication is limited to username and password verification locally, requiring passwords of at least 8 characters, stored with salted hashing. Message content is desensitized based on sensitivity levels. Notifications are uniformly written to an in-platform message queue and triggered by local scheduled tasks, without reliance on external SMS/email/push services.
+
+Observability features include structured logging, metrics, and health checks. Key workflows (search, parsing, process flows, queue consumption) are tracked with trace IDs. Queue backlogs and API P95 response times exceeding 500ms trigger local alerts and diagnostic reports.
